@@ -226,52 +226,17 @@ for epoch_i in range(0, epochs):
             # Report progress.
             print('  Batch {:>5,}  of  {:>5,}.    Elapsed: {:}.'.format(step, len(train_dataloader), elapsed))
 
-        # Unpack this training batch from our dataloader. 
-        #
-        # As we unpack the batch, we'll also copy each tensor to the GPU using the 
-        # `to` method.
-        #
-        # `batch` contains three pytorch tensors:
-        #   [0]: input ids 
-        #   [1]: attention masks
-        #   [2]: role types
-        #   [3]: entity types 
-        #   [4]: labels
-        
-        
 
         b_input_ids = batch[0].to(device)
         b_input_mask = batch[1].to(device)
         b_labels = batch[2].to(device)
         # print(b_input_ids)
 
-        # Always clear any previously calculated gradients before performing a
-        # backward pass. PyTorch doesn't do this automatically because 
-        # accumulating the gradients is "convenient while training RNNs". 
         model.zero_grad()        
-
-        # Perform a forward pass (evaluate the model on this training batch).
-        # The documentation for this `model` function is here: 
-        # https://huggingface.co/transformers/v2.2.0/model_doc/bert.html#transformers.BertForSequenceClassification
-        # It returns different numbers of parameters depending on what arguments
-        # arge given and what flags are set. For our useage here, it returns
-        # the loss (because we provided labels) and the "logits"--the model
-        # outputs prior to activation.
-        # print(model)
-        # print(torch.cuda.memory_summary(2))
 
         outputs = model(b_input_ids, attention_mask=b_input_mask,labels=b_labels)
         loss = outputs[0] 
 
-
-        # Accumulate the training loss over all of the batches so that we can
-        # calculate the average loss at the end. `loss` is a Tensor containing a
-        # single value; the `.item()` function just returns the Python value 
-        # from the tensor.
-
-        # tensor([2.1368, 2.7562, 2.1679], device='cuda:0', grad_fn=<GatherBackward>)
-        # loss = torch.mean(loss)
-        # print(loss)
         total_train_loss += loss.item()
 
 
@@ -281,10 +246,7 @@ for epoch_i in range(0, epochs):
         # Clip the norm of the gradients to 1.0.
         # This is to help prevent the "exploding gradients" problem.
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-        # Update parameters and take a step using the computed gradient.
-        # The optimizer dictates the "update rule"--how the parameters are
-        # modified based on their gradients, the learning rate, etc.
+        
         optimizer.step()
 
         # Update the learning rate.
@@ -326,34 +288,15 @@ for epoch_i in range(0, epochs):
         
         batch = trim_batch(batch[0],tokenizer.pad_token_id,batch[2],attention_mask = batch[1])
 
-        # Unpack this training batch from our dataloader. 
-        #
-        # As we unpack the batch, we'll also copy each tensor to the GPU using 
-        # the `to` method.
-        #
-        # `batch` contains three pytorch tensors:
-        #   [0]: input ids 
-        #   [1]: attention masks
-        #   [2]: labels 
-
         b_input_ids = batch[0].to(device)
         b_input_mask = batch[1].to(device)
         b_labels = batch[2].to(device)
         
-        
-        # Tell pytorch not to bother with constructing the compute graph during
-        # the forward pass, since this is only needed for backprop (training).
+
         with torch.no_grad():        
 
-            # Forward pass, calculate logit predictions.
-            # token_type_ids is the same as the "segment ids", which 
-            # differentiates sentence 1 and 2 in 2-sentence tasks.
-            # The documentation for this `model` function is here: 
-            # https://huggingface.co/transformers/v2.2.0/model_doc/bert.html#transformers.BertForSequenceClassification
-            # Get the "logits" output by the model. The "logits" are the output
-            # values prior to applying an activation function like the softmax.
             outputs = model(b_input_ids, attention_mask=b_input_mask, labels=b_labels)
-            # outputs = model(b_input_ids, attention_mask=b_input_mask, labels=b_labels)
+
             loss = outputs[0] 
             logits = outputs[1]
             
@@ -364,22 +307,14 @@ for epoch_i in range(0, epochs):
         # Move logits and labels to CPU
         logits = logits.detach().cpu().numpy()
         label_ids = b_labels.to('cpu').numpy()
-        # print('logits:',logits)
-        # print('labels:',label_ids)
-        # acc_at_3 = flat_accuracy_top_k(logits,label_ids,3)
-        # print('acc_at_3:',acc_at_3)
-        # Calculate the accuracy for this batch of test sentences, and
-        # accumulate it over all batches.
-        # print('acc_at_1',flat_accuracy_top_k(logits,label_ids,1))
-        # print('acc',flat_accuracy(logits, label_ids)) 
 
         total_eval_accuracy += flat_accuracy(logits, label_ids)
-        # total_evel_acc_at_3 += flat_accuracy_top_k(logits,label_ids,3)
+
 
     # Report the final accuracy for this validation run.
 
     avg_val_accuracy = total_eval_accuracy / len(validation_dataloader)
-    # avg_val_acc_at_3 = total_evel_acc_at_3 / len(validation_dataloader)
+
     print("  Accuracy: {0:.2f}".format(avg_val_accuracy))
     # print("  Accuracy@3: {0:.2f}".format(avg_val_acc_at_3))
 
