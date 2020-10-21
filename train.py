@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.distance import cosine
 from torch import nn
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
 
 from data import get_inputdata
 
@@ -15,6 +17,7 @@ from data import get_inputdata
 """pretrained model of choice"""
 # pretrained_model_name = 'SpanBERT/spanbert-base-cased'
 pretrained_model_name = 'bert-base-cased'
+# pretrained_model_name = 'bert-large-cased'
 
 
 """set up tokenizer"""
@@ -22,22 +25,30 @@ tokenizer = BertTokenizer.from_pretrained(pretrained_model_name)
 # tokenizer = BertTokenizer.from_pretrained('bert-large-cased-whole-word-masking')
 tokenizer_max_len = 200
 
+
+trainset_path = './dataset/review_subsets/trainset_subset_1.json'
+devset_path = './dataset/review_subsets/devset_subset_1.json'
+
 """import data"""
-input_ids,attention_masks,labels = get_inputdata(tokenizer,maxlength = tokenizer_max_len, dataset = 'review')
+input_ids_dev,attention_masks_dev,labels_dev = get_inputdata(devset_path,tokenizer,maxlength = tokenizer_max_len, dataset = 'review')
+input_ids,attention_masks,labels = get_inputdata(trainset_path,tokenizer,maxlength = tokenizer_max_len, dataset = 'review')
 print('labels:',labels)
+
 from torch.utils.data import TensorDataset, random_split
 
 # Combine the training inputs into a TensorDataset.
-dataset = TensorDataset(input_ids, attention_masks, labels)
+train_dataset = TensorDataset(input_ids, attention_masks, labels)
+val_dataset = TensorDataset(input_ids_dev, attention_masks_dev, labels_dev)
  
 
 # Calculate the number of samples to include in each set.
-train_size = int(0.9 * len(dataset))
-val_size = len(dataset) - train_size
-
+# train_size = int(0.9 * len(dataset))
+# val_size = len(dataset) - train_size
+train_size = len(train_dataset)
+val_size = len(val_dataset)
 
 # Divide the dataset by randomly selecting samples.
-train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+# train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
 print('{:>5,} training samples'.format(train_size))
 print('{:>5,} validation samples'.format(val_size))
@@ -76,7 +87,7 @@ optimizer = AdamW(model.parameters(), lr=1e-5)
 # use cuda
 
 if torch.cuda.is_available():  
-  dev = "cuda:2" 
+  dev = "cuda:3" 
 else:  
   dev = "cpu"
 CUDA_VISIBLE_DEVICES=0,1,2  
@@ -283,6 +294,8 @@ for epoch_i in range(0, epochs):
     total_eval_loss = 0
     nb_eval_steps = 0
 
+    total_pred_labels = np.array([])
+    total_true_labels = np.array([])
     # Evaluate data for one epoch
     for batch in validation_dataloader:
         
@@ -307,15 +320,21 @@ for epoch_i in range(0, epochs):
         # Move logits and labels to CPU
         logits = logits.detach().cpu().numpy()
         label_ids = b_labels.to('cpu').numpy()
-
+        
         total_eval_accuracy += flat_accuracy(logits, label_ids)
-
+        
+        pred_flat = np.argmax(logits, axis=1).flatten()
+        labels_flat = label_ids.flatten()
+        
+        # print(pred_flat)
+        # print(labels_flat)
+        total_pred_labels = np.concatenate((total_pred_labels,pred_flat))
+        total_true_labels = np.concatenate((total_true_labels,labels_flat))
 
     # Report the final accuracy for this validation run.
-
+   
     avg_val_accuracy = total_eval_accuracy / len(validation_dataloader)
 
-    print("  Accuracy: {0:.2f}".format(avg_val_accuracy))
     # print("  Accuracy@3: {0:.2f}".format(avg_val_acc_at_3))
 
     # Calculate the average loss over all of the batches.
@@ -323,7 +342,19 @@ for epoch_i in range(0, epochs):
     
     # Measure how long the validation run took.
     validation_time = format_time(time.time() - t0)
-    
+    print('total preds:',total_pred_labels)
+    print('total truth:',total_true_labels)
+    print('sklearn macro: precision, recall, F1:')
+    print(precision_recall_fscore_support(total_true_labels, total_pred_labels, average='macro'))
+    print()
+    print('sklearn micro: precision, recall, F1:')
+    print(precision_recall_fscore_support(total_true_labels, total_pred_labels, average='micro'))
+    print()
+    print('sklearn accuracy:')
+    print(accuracy_score(total_true_labels,total_pred_labels))
+    print()
+
+    print("  Accuracy: {0:.2f}".format(avg_val_accuracy))
     print("  Validation Loss: {0:.2f}".format(avg_val_loss))
     print("  Validation took: {:}".format(validation_time))
 
@@ -351,7 +382,7 @@ import os
 
 # Saving best-practices: if you use defaults names for the model, you can reload it using from_pretrained()
 
-output_dir = './bert_base_case_first_try/'
+output_dir = './bert_temp/'
 
 # Create output directory if needed
 if not os.path.exists(output_dir):
