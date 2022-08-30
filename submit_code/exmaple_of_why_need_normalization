@@ -1,0 +1,62 @@
+baseline without feature: trained on a subset of training subset
+sklearn macro: precision, recall, F1:
+(0.4557479157258035, 0.4820424345886363, 0.4454043663974625, None)
+
+sklearn micro: precision, recall, F1:
+(0.6526706376330437, 0.6526706376330437, 0.6526706376330437, None)
+
+sklearn accuracy:
+0.6526706376330437
+
+  Accuracy: 0.65
+  Validation Loss: 0.86
+  Validation took: 0:00:35
+
+====================================================================
+adding feature concat directly without normalization:
+sklearn macro: precision, recall, F1:
+(0.3632163737328758, 0.35822035323710194, 0.3325599378575553, None)
+
+sklearn micro: precision, recall, F1:
+(0.5041499853529928, 0.5041499853529928, 0.5041499853529928, None)
+
+sklearn accuracy:
+0.5041499853529928
+
+Accuracy: 0.51
+Validation Loss: 5.43
+Validation took: 0:00:35
+
+
+
+======================
+current bset using avg_stars
+Running Validation...
+sklearn macro: precision, recall, F1:
+(0.5641187287824279, 0.5218674639516119, 0.5151044578544142, None)
+
+sklearn micro: precision, recall, F1:
+(0.6677082316180061, 0.6677082316180061, 0.6677082316180061, None)
+
+sklearn accuracy:
+0.6677082316180061
+
+  Accuracy: 0.67
+  Validation Loss: 0.81
+  Validation took: 0:00:36
+
+==================================
+play aroung with hidden size
+==================================
+9 features, hidden size 3: 
+    Average training loss: 1.00
+    Accuracy: 0.66  
+
+9 features, hidden size 5:
+    Average training loss: 1.03
+    Accuracy: 0.67
+
+9 feature, hidden size 1:
+    Accuracy: 0.66
+    Validation Loss: 0.82
+===================================
